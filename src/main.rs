@@ -281,6 +281,7 @@ async fn main() {
 	
 	// RedGifs proxy with lazy loading
 	app.at("/redgifs/*path").get(|req| redlib::redgifs::handler(req).boxed());
+	app.at("/giphy/:id/:ext").get(|r| proxy(r, "https://media.giphy.com/media/{id}/giphy.{ext}").boxed());
 
 	// Browse user profile
 	app
