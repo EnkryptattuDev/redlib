@@ -680,6 +680,8 @@ pub struct Preferences {
 	pub remove_default_feeds: String,
 	#[revision(start = 2, default_fn = "default_clean_urls")]
 	pub clean_urls: String,
+	#[revision(start = 2, default_fn = "default_geo_filter")]
+	pub geo_filter: String,
 	#[revision(start = 2, default_fn = "default_unblur_on_hover")]
 	pub unblur_on_hover: String,
 }
@@ -742,6 +744,7 @@ impl Preferences {
 			hide_score: setting(req, "hide_score"),
 			remove_default_feeds: setting(req, "remove_default_feeds"),
 			clean_urls: setting(req, "clean_urls"),
+			geo_filter: setting_or_default(req, "geo_filter", "GLOBAL".to_string()),
 		}
 	}
 
@@ -759,7 +762,7 @@ impl Preferences {
 		Ok(base2048::encode(&self.to_compressed_bincode()?))
 	}
 	pub fn from_bincode(bytes: &[u8]) -> Result<Preferences, String> {
-		const FIELDS: usize = 23;
+		const FIELDS: usize = 24;
 		let mut reader = std::io::Cursor::new(bytes);
 		let mut fields: Vec<String> = Vec::new();
 		while fields.len() < FIELDS {
@@ -806,11 +809,15 @@ impl Preferences {
 			hide_score: at(&fields, 19, ""),
 			remove_default_feeds: at(&fields, 20, ""),
 			clean_urls: at(&fields, 21, "off"),
-			unblur_on_hover: at(&fields, 22, "off"),
+			geo_filter: at(&fields, 22, "GLOBAL"),
+			unblur_on_hover: at(&fields, 23, "off"),
 		})
 	}
 	fn default_clean_urls(_revision: u16) -> Result<String, Error> {
 		Ok("off".to_owned())
+	}
+	fn default_geo_filter(_revision: u16) -> Result<String, Error> {
+		Ok("GLOBAL".to_owned())
 	}
 	fn default_unblur_on_hover(_revision: u16) -> Result<String, Error> {
 		Ok("off".to_owned())
@@ -1666,11 +1673,12 @@ mod tests {
 			hide_score: "off".to_owned(),
 			remove_default_feeds: "off".to_owned(),
 			clean_urls: "off".to_owned(),
+			geo_filter: "GLOBAL".to_owned(),
 			unblur_on_hover: "off".to_owned(),
 		};
 		let urlencoded = serde_urlencoded::to_string(prefs).expect("Failed to serialize Prefs");
 
-		assert_eq!(urlencoded, "theme=laserwave&front_page=default&layout=compact&wide=on&blur_spoiler=on&show_nsfw=off&blur_nsfw=on&hide_hls_notification=off&video_quality=best&hide_sidebar_and_summary=off&use_hls=on&autoplay_videos=on&fixed_navbar=on&disable_visit_reddit_confirmation=on&comment_sort=confidence&post_sort=top&subscriptions=memes%2Bmildlyinteresting&filters=&hide_awards=off&hide_score=off&remove_default_feeds=off&clean_urls=off&unblur_on_hover=off");
+		assert_eq!(urlencoded, "theme=laserwave&front_page=default&layout=compact&wide=on&blur_spoiler=on&show_nsfw=off&blur_nsfw=on&hide_hls_notification=off&video_quality=best&hide_sidebar_and_summary=off&use_hls=on&autoplay_videos=on&fixed_navbar=on&disable_visit_reddit_confirmation=on&comment_sort=confidence&post_sort=top&subscriptions=memes%2Bmildlyinteresting&filters=&hide_awards=off&hide_score=off&remove_default_feeds=off&clean_urls=off&geo_filter=GLOBAL&unblur_on_hover=off");
 	}
 
 	#[test]

@@ -153,6 +153,7 @@ impl InstanceInfo {
 				["Subscriptions", &convert(&self.config.default_subscriptions)],
 				["Filters", &convert(&self.config.default_filters)],
 				["Clean URLs", &convert(&self.config.default_clean_urls)],
+				["Geo filter", &convert(&self.config.default_geo_filter)],
 			])
 			.with_header_row(["Default preferences"]),
 		);
@@ -191,7 +192,8 @@ impl InstanceInfo {
                     Default hide HLS notification: {:?}\n
 					Default clean urls: {:?}\n
                     Default subscriptions: {:?}\n
-                    Default filters: {:?}\n",
+                    Default filters: {:?}\n
+					Default geo filter: {:?}\n",
 					self.package_name,
 					self.crate_version,
 					self.git_commit,
@@ -221,6 +223,7 @@ impl InstanceInfo {
 					self.config.default_clean_urls,
 					self.config.default_subscriptions,
 					self.config.default_filters,
+					self.config.default_geo_filter,
 				)
 			}
 			StringType::Html => self.to_table(),
