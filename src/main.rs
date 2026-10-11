@@ -264,7 +264,7 @@ async fn main() {
 	app.at("/instances.json").get(|_| async move { Ok(proxy_instances().await.unwrap()) }.boxed()); // TODO: In the process of migrating error handling. (I recommend thiserror crate for dynamic errors.) No proper error handling yes, so functionality unimpacted.
 
 	// Proxy media through Redlib
-	app.at("/vid/:id/:size").get(|r| proxy(r, "https://v.redd.it/{id}/DASH_{size}").boxed());
+	app.at("/vid/:id/:prefix/:size").get(|r| proxy(r, "https://v.redd.it/{id}/{prefix}_{size}").boxed());
 	app.at("/hls/:id/*path").get(|r| proxy(r, "https://v.redd.it/{id}/{path}").boxed());
 	app.at("/img/*path").get(|r| proxy(r, "https://i.redd.it/{path}").boxed());
 	app.at("/thumb/:point/:id").get(|r| proxy(r, "https://{point}.thumbs.redditmedia.com/{id}").boxed());
