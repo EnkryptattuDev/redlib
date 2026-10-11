@@ -218,6 +218,7 @@ async fn main() {
 	}
 
 	// Read static files
+	app.at("/healthz").get(|_| resource("ok", "text/plain", false).boxed());
 	app.at("/style.css").get(|_| style().boxed());
 	app
 		.at("/manifest.json")

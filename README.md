@@ -1,5 +1,47 @@
 # Redlib
 
+> [!IMPORTANT]
+> This is a fork of [redlib-org/redlib](https://github.com/redlib-org/redlib).
+
+### Features
+
+- Distroless docker image and `/healthz` endpoint (inspired by [Nachtalb/redlib#8](https://github.com/Nachtalb/redlib/pull/8))
+- Unblur on click, optional unblur on hover ([#290](https://github.com/redlib-org/redlib/pull/290))
+- Collapse comments by clicking the indent line ([#291](https://github.com/redlib-org/redlib/pull/291))
+- Keyboard navigation ([#422](https://github.com/redlib-org/redlib/pull/422))
+- Clean links: strip tracking parameters ([#460](https://github.com/redlib-org/redlib/pull/460))
+- Geo filter as a user setting ([#566](https://github.com/redlib-org/redlib/pull/566))
+- Configurable source URL in the footer ([#568](https://github.com/redlib-org/redlib/pull/568))
+- Onion service support via `REDLIB_USE_TOR` ([#577](https://github.com/redlib-org/redlib/pull/577))
+- RedGifs video proxy ([#507](https://github.com/redlib-org/redlib/pull/507))
+- GIPHY GIF embeds in comments ([#561](https://github.com/redlib-org/redlib/pull/561))
+- Lazy-loaded post images ([#539](https://github.com/redlib-org/redlib/pull/539))
+- Autoplay only when visible ([#194](https://github.com/redlib-org/redlib/pull/194))
+- `rich:video` and CMAF video support ([#549](https://github.com/redlib-org/redlib/pull/549))
+- RSS image enclosures on user feeds ([#563](https://github.com/redlib-org/redlib/pull/563))
+- Better RSS media ([#572](https://github.com/redlib-org/redlib/pull/572))
+
+### Fixes
+
+- `/settings/update` no longer clobbers cookies ([#583](https://github.com/redlib-org/redlib/pull/583))
+- Error-aware caching, no panic on network failure ([#396](https://github.com/redlib-org/redlib/pull/396))
+- No out-of-bounds crash on empty comment threads ([#542](https://github.com/redlib-org/redlib/pull/542))
+- Default post sort applies immediately ([#521](https://github.com/redlib-org/redlib/pull/521))
+- Share links on user profiles ([#560](https://github.com/redlib-org/redlib/pull/560))
+- Element margins in posts and comments ([#413](https://github.com/redlib-org/redlib/pull/413))
+- Larger comment collapse touch area ([#520](https://github.com/redlib-org/redlib/pull/520))
+- Searchbox focus outline ([#524](https://github.com/redlib-org/redlib/pull/524))
+- Source Docker image build ([#556](https://github.com/redlib-org/redlib/pull/556))
+
+### Dependencies
+
+- brotli 8 ([#476](https://github.com/redlib-org/redlib/pull/476))
+- nix flake.lock and deps ([#492](https://github.com/redlib-org/redlib/pull/492), [#552](https://github.com/redlib-org/redlib/pull/552))
+- hls.js 1.5.1 to 1.7.3
+- Dependency refresh
+
+---
+
 > An alternative private front-end to Reddit, with its origins in [Libreddit](https://github.com/libreddit/libreddit).
 
 ![screenshot](https://i.ibb.co/18vrdxk/redlib-rust.png)

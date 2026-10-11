@@ -1,6 +1,9 @@
+# docker compose up -d --build
 services:
   redlib:
-    image: quay.io/redlib/redlib:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.distroless
     restart: always
     container_name: "redlib"
     ports:
@@ -15,10 +18,6 @@ services:
     env_file: .env
     networks:
       - redlib
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "--tries=1", "http://localhost:8080/settings"]
-      interval: 5m
-      timeout: 3s
 
 networks:
   redlib:

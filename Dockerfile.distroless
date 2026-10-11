@@ -1,0 +1,38 @@
+ARG RUST_BUILDER_VERSION=slim-bookworm
+
+FROM ghcr.io/rust-cross/rust-musl-cross:x86_64-musl AS builder
+
+RUN apt-get update \
+    && apt-get -y install git cmake perl pkg-config libclang-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN rustup target add x86_64-unknown-linux-musl
+
+ENV BINDGEN_EXTRA_CLANG_ARGS_x86_64_unknown_linux_musl="--sysroot=/usr/local/musl/x86_64-unknown-linux-musl -I/usr/local/musl/lib/gcc/x86_64-unknown-linux-musl/12.4.0/include"
+
+WORKDIR /redlib
+
+COPY Cargo.lock Cargo.toml ./
+RUN mkdir src && echo "fn main() { panic!(\"why am i running?\") }" > src/main.rs
+RUN cargo build --release --locked --bin redlib --target x86_64-unknown-linux-musl
+RUN rm ./src/main.rs && rmdir ./src
+
+COPY . ./
+RUN cargo build --release --locked --bin redlib --target x86_64-unknown-linux-musl
+RUN echo "finished building redlib!"
+
+FROM gcr.io/distroless/static:nonroot AS release
+
+COPY --from=builder /redlib/target/x86_64-unknown-linux-musl/release/redlib /usr/local/bin/redlib
+
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+USER 65532
+WORKDIR /home/nonroot
+EXPOSE 8080
+
+LABEL org.opencontainers.image.title="redlib" \
+      org.opencontainers.image.description="Private front-end for Reddit" \
+      org.opencontainers.image.licenses="AGPL-3.0-only" \
+      org.opencontainers.image.base.name="gcr.io/distroless/static:nonroot"
+
+CMD ["redlib"]
