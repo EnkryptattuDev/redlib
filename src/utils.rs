@@ -9,7 +9,7 @@ use hyper::{Body, Request, Response};
 use libflate::deflate::{Decoder, Encoder};
 use log::error;
 use regex::Regex;
-use revision::revisioned;
+use revision::{revisioned, Error};
 use rust_embed::RustEmbed;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
@@ -618,7 +618,7 @@ pub struct Params {
 }
 
 #[derive(Default, Serialize, Deserialize, Debug, PartialEq, Eq)]
-#[revisioned(revision = 1)]
+#[revisioned(revision = 2)]
 pub struct Preferences {
 	#[revision(start = 1)]
 	#[serde(skip_serializing, skip_deserializing)]
@@ -667,6 +667,8 @@ pub struct Preferences {
 	pub hide_score: String,
 	#[revision(start = 1)]
 	pub remove_default_feeds: String,
+	#[revision(start = 2, default_fn = "default_unblur_on_hover")]
+	pub unblur_on_hover: String,
 }
 
 fn serialize_vec_with_plus<S>(vec: &[String], serializer: S) -> Result<S::Ok, S::Error>
@@ -712,6 +714,7 @@ impl Preferences {
 			show_nsfw: setting(req, "show_nsfw"),
 			hide_sidebar_and_summary: setting(req, "hide_sidebar_and_summary"),
 			blur_nsfw: setting(req, "blur_nsfw"),
+			unblur_on_hover: setting(req, "unblur_on_hover"),
 			use_hls: setting(req, "use_hls"),
 			hide_hls_notification: setting(req, "hide_hls_notification"),
 			video_quality: setting(req, "video_quality"),
@@ -740,6 +743,59 @@ impl Preferences {
 	}
 	pub fn to_bincode_str(&self) -> Result<String, String> {
 		Ok(base2048::encode(&self.to_compressed_bincode()?))
+	}
+	pub fn from_bincode(bytes: &[u8]) -> Result<Preferences, String> {
+		const FIELDS: usize = 22;
+		let mut reader = std::io::Cursor::new(bytes);
+		let mut fields: Vec<String> = Vec::new();
+		while fields.len() < FIELDS {
+			match bincode::deserialize_from(&mut reader) {
+				Ok(value) => fields.push(value),
+				Err(_) => break,
+			}
+		}
+		if fields.is_empty() {
+			return Err("invalid settings code".to_string());
+		}
+		fn at(fields: &[String], index: usize, default: &str) -> String {
+			fields.get(index).cloned().unwrap_or_else(|| default.to_owned())
+		}
+		fn split_at(fields: &[String], index: usize) -> Vec<String> {
+			let joined = fields.get(index).cloned().unwrap_or_default();
+			if joined.is_empty() {
+				Vec::new()
+			} else {
+				joined.split('+').map(String::from).collect()
+			}
+		}
+		Ok(Preferences {
+			available_themes: Vec::new(),
+			theme: at(&fields, 0, ""),
+			front_page: at(&fields, 1, ""),
+			layout: at(&fields, 2, ""),
+			wide: at(&fields, 3, ""),
+			blur_spoiler: at(&fields, 4, ""),
+			show_nsfw: at(&fields, 5, ""),
+			blur_nsfw: at(&fields, 6, ""),
+			hide_hls_notification: at(&fields, 7, ""),
+			video_quality: at(&fields, 8, ""),
+			hide_sidebar_and_summary: at(&fields, 9, ""),
+			use_hls: at(&fields, 10, ""),
+			autoplay_videos: at(&fields, 11, ""),
+			fixed_navbar: at(&fields, 12, "on"),
+			disable_visit_reddit_confirmation: at(&fields, 13, ""),
+			comment_sort: at(&fields, 14, ""),
+			post_sort: at(&fields, 15, ""),
+			subscriptions: split_at(&fields, 16),
+			filters: split_at(&fields, 17),
+			hide_awards: at(&fields, 18, ""),
+			hide_score: at(&fields, 19, ""),
+			remove_default_feeds: at(&fields, 20, ""),
+			unblur_on_hover: at(&fields, 21, "off"),
+		})
+	}
+	fn default_unblur_on_hover(_revision: u16) -> Result<String, Error> {
+		Ok("off".to_owned())
 	}
 }
 
@@ -1543,10 +1599,11 @@ mod tests {
 			hide_awards: "off".to_owned(),
 			hide_score: "off".to_owned(),
 			remove_default_feeds: "off".to_owned(),
+			unblur_on_hover: "off".to_owned(),
 		};
 		let urlencoded = serde_urlencoded::to_string(prefs).expect("Failed to serialize Prefs");
 
-		assert_eq!(urlencoded, "theme=laserwave&front_page=default&layout=compact&wide=on&blur_spoiler=on&show_nsfw=off&blur_nsfw=on&hide_hls_notification=off&video_quality=best&hide_sidebar_and_summary=off&use_hls=on&autoplay_videos=on&fixed_navbar=on&disable_visit_reddit_confirmation=on&comment_sort=confidence&post_sort=top&subscriptions=memes%2Bmildlyinteresting&filters=&hide_awards=off&hide_score=off&remove_default_feeds=off");
+		assert_eq!(urlencoded, "theme=laserwave&front_page=default&layout=compact&wide=on&blur_spoiler=on&show_nsfw=off&blur_nsfw=on&hide_hls_notification=off&video_quality=best&hide_sidebar_and_summary=off&use_hls=on&autoplay_videos=on&fixed_navbar=on&disable_visit_reddit_confirmation=on&comment_sort=confidence&post_sort=top&subscriptions=memes%2Bmildlyinteresting&filters=&hide_awards=off&hide_score=off&remove_default_feeds=off&unblur_on_hover=off");
 	}
 
 	#[test]
@@ -1665,7 +1722,7 @@ How`s your monitor by the way? Any IPS bleed whatsoever? I either got lucky or t
 		for config in KNOWN_GOOD_CONFIGS {
 			let bytes = base2048::decode(config).unwrap();
 			let decompressed = deflate_decompress(bytes).unwrap();
-			assert!(bincode::deserialize::<Preferences>(&decompressed).is_ok());
+			assert!(Preferences::from_bincode(&decompressed).is_ok());
 		}
 	}
 
@@ -1674,7 +1731,7 @@ How`s your monitor by the way? Any IPS bleed whatsoever? I either got lucky or t
 		for config in KNOWN_GOOD_CONFIGS {
 			let bytes = base2048::decode(config).unwrap();
 			let decompressed = deflate_decompress(bytes).unwrap();
-			let prefs: Preferences = bincode::deserialize(&decompressed).unwrap();
+			let prefs: Preferences = Preferences::from_bincode(&decompressed).unwrap();
 			test_round_trip(&prefs, false);
 			test_round_trip(&prefs, true);
 		}

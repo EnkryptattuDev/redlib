@@ -24,7 +24,7 @@ struct SettingsTemplate {
 
 // CONSTANTS
 
-const PREFS: [&str; 19] = [
+const PREFS: [&str; 20] = [
 	"theme",
 	"front_page",
 	"layout",
@@ -34,6 +34,7 @@ const PREFS: [&str; 19] = [
 	"blur_spoiler",
 	"show_nsfw",
 	"blur_nsfw",
+	"unblur_on_hover",
 	"use_hls",
 	"hide_hls_notification",
 	"autoplay_videos",
@@ -292,7 +293,7 @@ pub async fn encoded_restore(req: Request<Body>) -> Result<Response<Body>, Strin
 		.await
 		.map_err(|e| format!("Failed to decompress bytes: {e}"))??;
 
-	let mut prefs: Preferences = timeout(std::time::Duration::from_secs(1), async { bincode::deserialize(&out) })
+	let mut prefs: Preferences = timeout(std::time::Duration::from_secs(1), async { Preferences::from_bincode(&out) })
 		.await
 		.map_err(|e| format!("Failed to deserialize preferences: {e}"))?
 		.map_err(|e| format!("Failed to deserialize bytes into Preferences struct: {e}"))?;
