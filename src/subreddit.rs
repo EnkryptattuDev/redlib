@@ -1,17 +1,14 @@
 #![allow(clippy::cmp_owned)]
 
-use crate::utils::{
-	Post, Preferences, Subreddit, catch_random, clean_url, error, filter_posts, format_num, format_url, get_filters, info, nsfw_landing, param, redirect, rewrite_urls, setting, template, to_absolute_url, val
-};
+use crate::{config};
 use crate::{client::json, server::RequestExt, server::ResponseExt};
-use crate::{config, utils};
+use crate::utils::{
+	build_rss_item, should_be_nsfw_gated, Post, Preferences, Subreddit, catch_random, clean_url, error, filter_posts, format_num, format_url, get_filters, info, nsfw_landing, param, redirect, rewrite_urls, setting, template, val
+};
 use askama::Template;
 use cookie::Cookie;
-use htmlescape::decode_html;
 use hyper::{Body, Request, Response};
-
-use chrono::DateTime;
-use rss::{ChannelBuilder, Enclosure, Item};
+use rss::ChannelBuilder;
 use time::{Duration, OffsetDateTime};
 use url::form_urlencoded;
 
@@ -128,7 +125,7 @@ pub async fn community(req: Request<Body>) -> Result<Response<Body>, String> {
 	let req_url = req.uri().to_string();
 	// Return landing page if this post if this is NSFW community but the user
 	// has disabled the display of NSFW content or if the instance is SFW-only.
-	if sub.nsfw && crate::utils::should_be_nsfw_gated(&req, &req_url) {
+	if sub.nsfw && should_be_nsfw_gated(&req, &req_url) {
 		return Ok(nsfw_landing(req, req_url).await.unwrap_or_default());
 	}
 
@@ -628,20 +625,7 @@ pub async fn rss(req: Request<Body>) -> Result<Response<Body>, String> {
 		.items(
 			posts
 				.into_iter()
-				.map(|post| {
-					let mut item = Item {
-						title: Some(post.title.to_string()),
-						link: Some(format_url(&utils::get_post_url(&post))),
-						author: Some(post.author.name.to_string()),
-						content: Some(rewrite_urls(&decode_html(&post.body).unwrap())),
-						pub_date: Some(DateTime::from_timestamp(post.created_ts as i64, 0).unwrap_or_default().to_rfc2822()),
-						description: Some(format!("<a href='{}'>Comments</a>", to_absolute_url(&post.permalink))),
-						..Default::default()
-					};
-
-					apply_enclosure(&mut item, &post);
-					item
-				})
+				.map(|post| build_rss_item(&post))
 				.collect::<Vec<_>>(),
 		)
 		.build();
@@ -654,59 +638,6 @@ pub async fn rss(req: Request<Body>) -> Result<Response<Body>, String> {
 	res.headers_mut().insert(CONTENT_TYPE, hyper::header::HeaderValue::from_static("application/rss+xml"));
 
 	Ok(res)
-}
-
-// Set enclosure image for RSS feed item
-pub fn apply_enclosure(item: &mut Item, post: &Post) {
-	item.set_enclosure(get_rss_image(&post));
-
-	// Embed the number of gallery images in description and content since
-	// only the first image in the gallery is used for the enclosure
-	if post.post_type == "gallery" && post.gallery.len() > 1 {
-		item.set_description(format!("<a href='{}'>Gallery with {} images</a>", to_absolute_url(&post.permalink), post.gallery.len()));
-
-		if let Some(content) = item.content() {
-			let new_content = format!("{}<br/>{}", item.description().unwrap_or(""), content,);
-			item.set_content(new_content);
-		}
-	}
-}
-
-fn get_rss_image(post: &Post) -> Option<Enclosure> {
-	let image_url = match post.post_type.as_str() {
-		"image" => Some(post.media.url.clone()),
-		"gallery" => post.gallery.get(0).and_then(|media| decode_html(&media.url).ok()),
-		"gif" | "video" => decode_html(&post.media.poster).ok(),
-		_ => None,
-	};
-
-	image_url.map(|url| {
-		let mut enclosure = Enclosure::default();
-		enclosure.set_mime_type(get_mime_type(&url));
-		enclosure.set_url(to_absolute_url(&url));
-		enclosure.set_length("0");
-		enclosure
-	})
-}
-
-/// Determines the MIME type based on file extension in a URL.
-/// Handles both absolute and relative URLs with query parameters.
-fn get_mime_type(url: &str) -> &'static str {
-	// Extract the path component, removing query parameters
-	let path = url.split('?').next().unwrap_or(url);
-
-	// Get the file extension (everything after the last dot)
-	let extension = path.rsplit('.').next().unwrap_or("").to_lowercase();
-
-	// Match common image extensions
-	match extension.as_str() {
-		"jpg" | "jpeg" => "image/jpeg",
-		"png" => "image/png",
-		"gif" => "image/gif",
-		"webp" => "image/webp",
-		"svg" => "image/svg+xml",
-		_ => "application/octet-stream",
-	}
 }
 
 fn rss_listing_params(req: &Request<Body>, default_sort: &str) -> Result<(String, String), String> {
@@ -755,7 +686,6 @@ fn rss_listing_params(req: &Request<Body>, default_sort: &str) -> Result<(String
 
 	Ok((sort, query.finish()))
 }
-
 #[cfg(test)]
 mod tests {
 	use super::*;
