@@ -196,9 +196,10 @@ impl Media {
 		let secure_media = &data["secure_media"]["reddit_video"];
 		let crosspost_parent_media = &data["crosspost_parent_list"][0]["secure_media"]["reddit_video"];
 
-		// Check RedGifs FIRST before Reddit's cached fallback videos, then other video sources
+		// Check RedGifs first only when Reddit hosts no video of its own, then other video sources
 		let domain = data["domain"].as_str().unwrap_or_default();
-		let (post_type, url_val, alt_url_val) = if redgifs::is_redgifs_domain(domain) {
+		let has_reddit_video = data_preview["fallback_url"].is_string() || secure_media["fallback_url"].is_string() || crosspost_parent_media["fallback_url"].is_string();
+		let (post_type, url_val, alt_url_val) = if redgifs::is_redgifs_domain(domain) && !has_reddit_video {
 			("video", &data["url"], None)
 		} else if data_preview["fallback_url"].is_string() {
 			(
