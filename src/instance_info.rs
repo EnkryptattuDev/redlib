@@ -152,6 +152,7 @@ impl InstanceInfo {
 				["Hide HLS notification", &convert(&self.config.default_hide_hls_notification)],
 				["Subscriptions", &convert(&self.config.default_subscriptions)],
 				["Filters", &convert(&self.config.default_filters)],
+				["Clean URLs", &convert(&self.config.default_clean_urls)],
 			])
 			.with_header_row(["Default preferences"]),
 		);
@@ -188,6 +189,7 @@ impl InstanceInfo {
 					Default unblur on hover: {:?}\n
                     Default use HLS: {:?}\n
                     Default hide HLS notification: {:?}\n
+					Default clean urls: {:?}\n
                     Default subscriptions: {:?}\n
                     Default filters: {:?}\n",
 					self.package_name,
@@ -216,6 +218,7 @@ impl InstanceInfo {
 					self.config.default_unblur_on_hover,
 					self.config.default_use_hls,
 					self.config.default_hide_hls_notification,
+					self.config.default_clean_urls,
 					self.config.default_subscriptions,
 					self.config.default_filters,
 				)
