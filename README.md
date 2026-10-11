@@ -111,6 +111,7 @@ Last tested on January 12, 2024.
 Results from Google PageSpeed Insights ([Redlib Report](https://pagespeed.web.dev/report?url=https%3A%2F%2Fredlib.matthew.science%2F), [Reddit Report](https://pagespeed.web.dev/report?url=https://www.reddit.com)).
 
 | Performance metric  | Redlib   | Reddit    |
+|                     | Country code or    |           |
 |---------------------|----------|-----------|
 | Speed Index         | 0.6s     | 1.9s      |
 | Performance Score   | 100%     | 64%       |
@@ -437,6 +438,7 @@ Assign a default value for each user-modifiable setting by passing environment v
 | `BLUR_NSFW`                         | `["on", "off"]`                                                                                                                                                                                                                 | `off`         |
 | `UNBLUR_ON_HOVER`                   | `["on", "off"]`                                                                                                                                                                                                                 | `off`         |
 | `CLEAN_URLS`                        | `["on", "off"]`                                                                                                                                                                                                                 | `off`         |
+| `GEO_FILTER`                        | Country code or `GLOBAL`                                                                                                                                                                                                                 | `GLOBAL`         |
 | `USE_HLS`                           | `["on", "off"]`                                                                                                                                                                                                                 | `off`         |
 | `HIDE_HLS_NOTIFICATION`             | `["on", "off"]`                                                                                                                                                                                                                 | `off`         |
 | `AUTOPLAY_VIDEOS`                   | `["on", "off"]`                                                                                                                                                                                                                 | `off`         |
