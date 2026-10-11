@@ -5,7 +5,6 @@
 use cached::proc_macro::cached;
 use clap::{Arg, ArgAction, Command};
 use std::sync::LazyLock;
-
 use futures_lite::FutureExt;
 use hyper::{header::HeaderValue, Body, Request, Response};
 use log::{info, warn};
@@ -81,9 +80,9 @@ async fn resource(body: &str, content_type: &str, cache: bool) -> Result<Respons
 		.unwrap_or_default();
 
 	if cache {
-		if let Ok(val) = HeaderValue::from_str("public, max-age=1209600, s-maxage=86400") {
-			res.headers_mut().insert("Cache-Control", val);
-		}
+		res
+			.headers_mut()
+			.insert("Cache-Control", HeaderValue::from_static("public, max-age=1209600, s-maxage=86400"));
 	}
 
 	Ok(res)
@@ -258,8 +257,8 @@ async fn main() {
 		.get(|_| resource(include_str!("../static/check_update.js"), "text/javascript", false).boxed());
 	app.at("/copy.js").get(|_| resource(include_str!("../static/copy.js"), "text/javascript", false).boxed());
 
-	app.at("/commits.atom").get(|_| async move { proxy_commit_info().await }.boxed());
-	app.at("/instances.json").get(|_| async move { proxy_instances().await }.boxed());
+	app.at("/commits.atom").get(|_| async move { Ok(proxy_commit_info().await.unwrap()) }.boxed()); // TODO: see below
+	app.at("/instances.json").get(|_| async move { Ok(proxy_instances().await.unwrap()) }.boxed()); // TODO: In the process of migrating error handling. (I recommend thiserror crate for dynamic errors.) No proper error handling yes, so functionality unimpacted.
 
 	// Proxy media through Redlib
 	app.at("/vid/:id/:size").get(|r| proxy(r, "https://v.redd.it/{id}/DASH_{size}").boxed());
@@ -424,16 +423,16 @@ pub async fn proxy_commit_info() -> Result<Response<Body>, String> {
 		Response::builder()
 			.status(200)
 			.header("content-type", "application/atom+xml")
-			.body(Body::from(fetch_commit_info().await))
+			.body(Body::from(fetch_commit_info().await.unwrap_or_default()))
 			.unwrap_or_default(),
 	)
 }
 
-#[cached(time = 600)]
-async fn fetch_commit_info() -> String {
+#[cached(time = 600, result = true, result_fallback = true)]
+async fn fetch_commit_info() -> Result<String, String> {
 	let url = "https://github.com/redlib-org/redlib/commits/main.atom";
 
-	CLIENT.get(url).send().await.expect("Failed to request GitHub").text().await.expect("Failed to read body")
+	Ok(CLIENT.get(url).send().await.map_err(|e| e.to_string())?.text().await.map_err(|e| e.to_string())?)
 }
 
 pub async fn proxy_instances() -> Result<Response<Body>, String> {
@@ -441,14 +440,14 @@ pub async fn proxy_instances() -> Result<Response<Body>, String> {
 		Response::builder()
 			.status(200)
 			.header("content-type", "application/json")
-			.body(Body::from(fetch_instances().await))
+			.body(Body::from(fetch_instances().await.unwrap_or_default()))
 			.unwrap_or_default(),
 	)
 }
 
-#[cached(time = 600)]
-async fn fetch_instances() -> String {
+#[cached(time = 600, result = true, result_fallback = true)]
+async fn fetch_instances() -> Result<String, String> {
 	let url = "https://raw.githubusercontent.com/redlib-org/redlib-instances/refs/heads/main/instances.json";
 
-	CLIENT.get(url).send().await.expect("Failed to request GitHub").text().await.expect("Failed to read body")
+	Ok(CLIENT.get(url).send().await.map_err(|e| e.to_string())?.text().await.map_err(|e| e.to_string())?)
 }
