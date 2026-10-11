@@ -1,7 +1,7 @@
 #![allow(clippy::cmp_owned)]
 use crate::{config};
 use crate::{client::json, server::RequestExt};
-use crate::utils::{build_rss_item, error, filter_posts, format_url, get_filters, nsfw_landing, param, setting, template, Post, Preferences, User, should_be_nsfw_gated};
+use crate::utils::{build_rss_item, error, filter_posts, fetch_media_page, format_url, get_filters, nsfw_landing, param, setting, template, Post, Preferences, User, should_be_nsfw_gated};
 use askama::Template;
 use hyper::{Body, Request, Response};
 use rss::ChannelBuilder;
@@ -76,7 +76,7 @@ pub async fn profile(req: Request<Body>) -> Result<Response<Body>, String> {
 		}))
 	} else {
 		// Request user posts/comments from Reddit
-		match Post::fetch(&path, false).await {
+		match fetch_media_page(&path, false, &setting(&req, "post_type_filter")).await {
 			Ok((mut posts, after)) => {
 				let (_, all_posts_filtered) = filter_posts(&mut posts, &filters);
 				let no_posts = posts.is_empty();

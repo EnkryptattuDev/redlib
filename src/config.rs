@@ -119,6 +119,9 @@ pub struct Config {
 	#[serde(rename = "REDLIB_DEFAULT_GEO_FILTER")]
 	pub(crate) default_geo_filter: Option<String>,
 
+	#[serde(rename = "REDLIB_DEFAULT_POST_TYPE_FILTER")]
+	pub(crate) default_post_type_filter: Option<String>,
+
 	#[serde(rename = "REDLIB_SOURCE_URL")]
 	pub(crate) source_url: Option<String>,
 
@@ -175,6 +178,7 @@ impl Config {
 			default_remove_default_feeds: parse("REDLIB_DEFAULT_REMOVE_DEFAULT_FEEDS"),
 			default_clean_urls: parse("REDLIB_DEFAULT_CLEAN_URLS"),
 			default_geo_filter: parse("REDLIB_DEFAULT_GEO_FILTER"),
+			default_post_type_filter: parse("REDLIB_DEFAULT_POST_TYPE_FILTER"),
 			source_url: parse("REDLIB_SOURCE_URL"),
 			use_tor: parse("REDLIB_USE_TOR"),
 		}
@@ -210,6 +214,7 @@ fn get_setting_from_config(name: &str, config: &Config) -> Option<String> {
 		"REDLIB_DEFAULT_REMOVE_DEFAULT_FEEDS" => config.default_remove_default_feeds.clone(),
 		"REDLIB_DEFAULT_CLEAN_URLS" => config.default_clean_urls.clone(),
 		"REDLIB_DEFAULT_GEO_FILTER" => config.default_geo_filter.clone(),
+		"REDLIB_DEFAULT_POST_TYPE_FILTER" => config.default_post_type_filter.clone(),
 		"REDLIB_SOURCE_URL" => config.source_url.clone(),
 		"REDLIB_USE_TOR" => config.use_tor.clone(),
 		_ => None,

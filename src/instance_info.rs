@@ -154,6 +154,7 @@ impl InstanceInfo {
 				["Filters", &convert(&self.config.default_filters)],
 				["Clean URLs", &convert(&self.config.default_clean_urls)],
 				["Geo filter", &convert(&self.config.default_geo_filter)],
+				["Post type filter", &convert(&self.config.default_post_type_filter)],
 			])
 			.with_header_row(["Default preferences"]),
 		);
@@ -193,7 +194,8 @@ impl InstanceInfo {
 					Default clean urls: {:?}\n
                     Default subscriptions: {:?}\n
                     Default filters: {:?}\n
-					Default geo filter: {:?}\n",
+					Default geo filter: {:?}\n
+					Default post type filter: {:?}\n",
 					self.package_name,
 					self.crate_version,
 					self.git_commit,
@@ -224,6 +226,7 @@ impl InstanceInfo {
 					self.config.default_subscriptions,
 					self.config.default_filters,
 					self.config.default_geo_filter,
+					self.config.default_post_type_filter,
 				)
 			}
 			StringType::Html => self.to_table(),

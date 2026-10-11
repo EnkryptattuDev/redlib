@@ -1,6 +1,6 @@
 #![allow(clippy::cmp_owned)]
 // CRATES
-use crate::utils::{self, catch_random, clean_url, error, filter_posts, format_num, format_url, get_filters, param, redirect, setting, template, val, Post, Preferences};
+use crate::utils::{self, catch_random, clean_url, error, filter_posts, fetch_media_page, format_num, format_url, get_filters, param, redirect, setting, template, val, Post, Preferences};
 use crate::{
 	client::json,
 	server::RequestExt,
@@ -128,7 +128,7 @@ pub async fn find(req: Request<Body>) -> Result<Response<Body>, String> {
 			no_posts: false,
 		}))
 	} else {
-		match Post::fetch(&path, quarantined).await {
+		match fetch_media_page(&path, quarantined, &setting(&req, "post_type_filter")).await {
 			Ok((mut posts, after)) => {
 				let clean_urls = setting(&req, "clean_urls");
 				if clean_urls == "on".to_owned() {

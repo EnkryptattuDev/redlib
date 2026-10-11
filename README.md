@@ -5,6 +5,7 @@
 
 ### Features
 
+- Post type filter toggle (all / images / videos)
 - Distroless docker image and `/healthz` endpoint (inspired by [Nachtalb/redlib#8](https://github.com/Nachtalb/redlib/pull/8))
 - Unblur on click, optional unblur on hover ([#290](https://github.com/redlib-org/redlib/pull/290))
 - Collapse comments by clicking the indent line ([#291](https://github.com/redlib-org/redlib/pull/291))
@@ -481,6 +482,7 @@ Assign a default value for each user-modifiable setting by passing environment v
 | `UNBLUR_ON_HOVER`                   | `["on", "off"]`                                                                                                                                                                                                                 | `off`         |
 | `CLEAN_URLS`                        | `["on", "off"]`                                                                                                                                                                                                                 | `off`         |
 | `GEO_FILTER`                        | Country code or `GLOBAL`                                                                                                                                                                                                                 | `GLOBAL`         |
+| `POST_TYPE_FILTER`                  | `["all", "image", "video"]`                                                                                                                                                                                                              | `all`            |
 | `USE_HLS`                           | `["on", "off"]`                                                                                                                                                                                                                 | `off`         |
 | `HIDE_HLS_NOTIFICATION`             | `["on", "off"]`                                                                                                                                                                                                                 | `off`         |
 | `AUTOPLAY_VIDEOS`                   | `["on", "off"]`                                                                                                                                                                                                                 | `off`         |

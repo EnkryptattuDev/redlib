@@ -3,7 +3,7 @@
 use crate::{config};
 use crate::{client::json, server::RequestExt, server::ResponseExt};
 use crate::utils::{
-	build_rss_item, should_be_nsfw_gated, Post, Preferences, Subreddit, catch_random, clean_url, error, filter_posts, format_num, format_url, get_filters, info, nsfw_landing, param, redirect, rewrite_urls, setting, template, val
+	build_rss_item, should_be_nsfw_gated, fetch_media_page, Post, Preferences, Subreddit, catch_random, clean_url, error, filter_posts, format_num, format_url, get_filters, info, nsfw_landing, param, redirect, rewrite_urls, setting, template, val
 };
 use askama::Template;
 use cookie::Cookie;
@@ -155,7 +155,7 @@ pub async fn community(req: Request<Body>) -> Result<Response<Body>, String> {
 			no_posts: false,
 		}))
 	} else {
-		match Post::fetch(&path, quarantined).await {
+		match fetch_media_page(&path, quarantined, &setting(&req, "post_type_filter")).await {
 			Ok((mut posts, after)) => {
 				let clean_urls = setting(&req, "clean_urls");
 				if clean_urls == "on".to_owned() {

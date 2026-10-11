@@ -3,7 +3,7 @@
 use crate::client::json;
 use crate::server::RequestExt;
 use crate::subreddit::{can_access_quarantine, quarantine};
-use crate::utils::{error, filter_posts, get_filters, nsfw_landing, parse_post, template, Post, Preferences};
+use crate::utils::{error, filter_posts, filter_posts_by_media, get_filters, nsfw_landing, parse_post, setting, template, Post, Preferences};
 
 use askama::Template;
 use hyper::{Body, Request, Response};
@@ -76,7 +76,8 @@ pub async fn item(req: Request<Body>) -> Result<Response<Body>, String> {
 			}
 
 			let filters = get_filters(&req);
-			let (duplicates, num_posts_filtered, all_posts_filtered) = parse_duplicates(&response[1], &filters).await;
+			let (mut duplicates, num_posts_filtered, all_posts_filtered) = parse_duplicates(&response[1], &filters).await;
+			filter_posts_by_media(&mut duplicates, &setting(&req, "post_type_filter"));
 
 			// These are the values for the "before=", "after=", and "sort="
 			// query params, respectively.

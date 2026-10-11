@@ -635,7 +635,7 @@ pub struct Params {
 }
 
 #[derive(Default, Serialize, Deserialize, Debug, PartialEq, Eq)]
-#[revisioned(revision = 2)]
+#[revisioned(revision = 3)]
 pub struct Preferences {
 	#[revision(start = 1)]
 	#[serde(skip_serializing, skip_deserializing)]
@@ -688,6 +688,8 @@ pub struct Preferences {
 	pub clean_urls: String,
 	#[revision(start = 2, default_fn = "default_geo_filter")]
 	pub geo_filter: String,
+	#[revision(start = 3, default_fn = "default_post_type_filter")]
+	pub post_type_filter: String,
 	#[revision(start = 2, default_fn = "default_unblur_on_hover")]
 	pub unblur_on_hover: String,
 }
@@ -751,6 +753,7 @@ impl Preferences {
 			remove_default_feeds: setting(req, "remove_default_feeds"),
 			clean_urls: setting(req, "clean_urls"),
 			geo_filter: setting_or_default(req, "geo_filter", "GLOBAL".to_string()),
+			post_type_filter: setting_or_default(req, "post_type_filter", "all".to_string()),
 		}
 	}
 
@@ -768,7 +771,7 @@ impl Preferences {
 		Ok(base2048::encode(&self.to_compressed_bincode()?))
 	}
 	pub fn from_bincode(bytes: &[u8]) -> Result<Preferences, String> {
-		const FIELDS: usize = 24;
+		const FIELDS: usize = 25;
 		let mut reader = std::io::Cursor::new(bytes);
 		let mut fields: Vec<String> = Vec::new();
 		while fields.len() < FIELDS {
@@ -816,7 +819,8 @@ impl Preferences {
 			remove_default_feeds: at(&fields, 20, ""),
 			clean_urls: at(&fields, 21, "off"),
 			geo_filter: at(&fields, 22, "GLOBAL"),
-			unblur_on_hover: at(&fields, 23, "off"),
+			post_type_filter: at(&fields, 23, "all"),
+			unblur_on_hover: at(&fields, 24, "off"),
 		})
 	}
 	fn default_clean_urls(_revision: u16) -> Result<String, Error> {
@@ -824,6 +828,9 @@ impl Preferences {
 	}
 	fn default_geo_filter(_revision: u16) -> Result<String, Error> {
 		Ok("GLOBAL".to_owned())
+	}
+	fn default_post_type_filter(_revision: u16) -> Result<String, Error> {
+		Ok("all".to_owned())
 	}
 	fn default_unblur_on_hover(_revision: u16) -> Result<String, Error> {
 		Ok("off".to_owned())
@@ -869,6 +876,75 @@ pub fn filter_posts(posts: &mut Vec<Post>, filters: &HashSet<String>) -> (u64, b
 
 		(lb - la, posts.is_empty())
 	}
+}
+
+/// `image` keeps image/gallery posts, `video` keeps gif/video posts, anything else keeps all.
+pub fn filter_posts_by_media(posts: &mut Vec<Post>, post_type_filter: &str) {
+	match post_type_filter {
+		"image" => posts.retain(|p| p.post_type == "image" || p.post_type == "gallery"),
+		"video" => posts.retain(|p| p.post_type == "gif" || p.post_type == "video"),
+		_ => {}
+	}
+}
+
+const MEDIA_BATCH_SIZE: usize = 100;
+const MEDIA_MAX_BATCHES: usize = 5;
+
+fn rewrite_query(path: &str, set: &[(&str, &str)], drop: &[&str]) -> String {
+	let (base, query) = path.split_once('?').unwrap_or((path, ""));
+	let mut out: Vec<String> = query
+		.split('&')
+		.filter(|pair| {
+			let key = pair.split('=').next().unwrap_or("");
+			!key.is_empty() && !drop.contains(&key) && !set.iter().any(|(name, _)| name == &key)
+		})
+		.map(str::to_string)
+		.collect();
+	out.extend(set.iter().map(|(name, value)| format!("{name}={value}")));
+	format!("{base}?{}", out.join("&"))
+}
+
+/// Fetch one page under a post type filter, over-fetching listing batches so the page fills up. 'after' points at the last shown post so paging keeps its place.
+pub async fn fetch_media_page(path: &str, quarantine: bool, post_type_filter: &str) -> Result<(Vec<Post>, String), String> {
+	if post_type_filter == "all" {
+		return Post::fetch(path, quarantine).await;
+	}
+	let page_size = param(path, "limit").and_then(|limit| limit.parse::<usize>().ok()).unwrap_or(25).clamp(1, MEDIA_BATCH_SIZE);
+	let batches = if param(path, "before").is_some() { 1 } else { MEDIA_MAX_BATCHES };
+	let limit = MEDIA_BATCH_SIZE.to_string();
+	let mut page: Vec<Post> = Vec::new();
+	let mut cursor = String::new();
+	for batch_index in 0..batches {
+		let batch_path = if batch_index == 0 {
+			rewrite_query(path, &[("limit", limit.as_str())], &[])
+		} else {
+			rewrite_query(path, &[("limit", limit.as_str()), ("after", cursor.as_str())], &["before"])
+		};
+		let (posts, next) = Post::fetch(&batch_path, quarantine).await?;
+		let done = next.is_empty();
+		cursor = next;
+		let mut batch = posts;
+		filter_posts_by_media(&mut batch, post_type_filter);
+		page.extend(batch);
+		if page.len() >= page_size || done {
+			break;
+		}
+	}
+	let backward = param(path, "before").is_some();
+	let truncated = page.len() > page_size;
+	if truncated {
+		if backward {
+			page.drain(..page.len() - page_size);
+		} else {
+			page.truncate(page_size);
+		}
+	}
+	let after = if truncated {
+		page.last().map(|post| format!("t3_{}", post.id)).unwrap_or_default()
+	} else {
+		cursor
+	};
+	Ok((page, after))
 }
 
 /// Creates a [`Post`] from a provided JSON.
@@ -1904,11 +1980,12 @@ mod tests {
 			remove_default_feeds: "off".to_owned(),
 			clean_urls: "off".to_owned(),
 			geo_filter: "GLOBAL".to_owned(),
+			post_type_filter: "all".to_owned(),
 			unblur_on_hover: "off".to_owned(),
 		};
 		let urlencoded = serde_urlencoded::to_string(prefs).expect("Failed to serialize Prefs");
 
-		assert_eq!(urlencoded, "theme=laserwave&front_page=default&layout=compact&wide=on&blur_spoiler=on&show_nsfw=off&blur_nsfw=on&hide_hls_notification=off&video_quality=best&hide_sidebar_and_summary=off&use_hls=on&autoplay_videos=on&fixed_navbar=on&disable_visit_reddit_confirmation=on&comment_sort=confidence&post_sort=top&subscriptions=memes%2Bmildlyinteresting&filters=&hide_awards=off&hide_score=off&remove_default_feeds=off&clean_urls=off&geo_filter=GLOBAL&unblur_on_hover=off");
+		assert_eq!(urlencoded, "theme=laserwave&front_page=default&layout=compact&wide=on&blur_spoiler=on&show_nsfw=off&blur_nsfw=on&hide_hls_notification=off&video_quality=best&hide_sidebar_and_summary=off&use_hls=on&autoplay_videos=on&fixed_navbar=on&disable_visit_reddit_confirmation=on&comment_sort=confidence&post_sort=top&subscriptions=memes%2Bmildlyinteresting&filters=&hide_awards=off&hide_score=off&remove_default_feeds=off&clean_urls=off&geo_filter=GLOBAL&post_type_filter=all&unblur_on_hover=off");
 	}
 
 	#[test]
