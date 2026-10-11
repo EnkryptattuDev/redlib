@@ -417,7 +417,8 @@ Assign a default value for each instance-specific setting by passing environment
 | `PORT`                    | Integer 0-65535 | `8080`                                 | The **internal** port Redlib listens on.                                                                  |
 | `ENABLE_RSS`              | `["on", "off"]` | `off`                                  | Enables RSS feed generation.                                                                              |
 | `FULL_URL`                | String          | (empty)                                | Allows for proper URLs (for now, only needed by RSS)                                                      |
-| `SOURCE_URL`              | String          | `https://github.com/redlib-org/redlib` | Link to the source code for this instance.
+| `SOURCE_URL`              | String          | `https://github.com/redlib-org/redlib` | Link to the source code for this instance.                                                                |
+| `USE_TOR`                 | String          | `off`                                  | Uses Reddit's onion service to avoid ratelimiting and other blocks. Requires ALL_PROXY set to a Tor socks5h proxy. |
 
 ## Default user settings
 

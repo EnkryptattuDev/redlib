@@ -121,6 +121,9 @@ pub struct Config {
 
 	#[serde(rename = "REDLIB_SOURCE_URL")]
 	pub(crate) source_url: Option<String>,
+
+	#[serde(rename = "REDLIB_USE_TOR")]
+	pub(crate) use_tor: Option<String>,
 }
 
 impl Config {
@@ -173,6 +176,7 @@ impl Config {
 			default_clean_urls: parse("REDLIB_DEFAULT_CLEAN_URLS"),
 			default_geo_filter: parse("REDLIB_DEFAULT_GEO_FILTER"),
 			source_url: parse("REDLIB_SOURCE_URL"),
+			use_tor: parse("REDLIB_USE_TOR"),
 		}
 	}
 }
@@ -207,6 +211,7 @@ fn get_setting_from_config(name: &str, config: &Config) -> Option<String> {
 		"REDLIB_DEFAULT_CLEAN_URLS" => config.default_clean_urls.clone(),
 		"REDLIB_DEFAULT_GEO_FILTER" => config.default_geo_filter.clone(),
 		"REDLIB_SOURCE_URL" => config.source_url.clone(),
+		"REDLIB_USE_TOR" => config.use_tor.clone(),
 		_ => None,
 	}
 }
