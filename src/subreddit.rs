@@ -165,8 +165,8 @@ pub async fn community(req: Request<Body>) -> Result<Response<Body>, String> {
 				let no_posts = posts.is_empty();
 				let all_posts_hidden_nsfw = !no_posts && (posts.iter().all(|p| p.flags.nsfw) && setting(&req, "show_nsfw") != "on");
 				if sort == "new" {
-					posts.sort_by(|a, b| b.created_ts.cmp(&a.created_ts));
-					posts.sort_by(|a, b| b.flags.stickied.cmp(&a.flags.stickied));
+					posts.sort_by_key(|post| std::cmp::Reverse(post.created_ts));
+					posts.sort_by_key(|post| std::cmp::Reverse(post.flags.stickied));
 				}
 				Ok(template(&SubredditTemplate {
 					sub,
@@ -595,8 +595,7 @@ pub async fn rss(req: Request<Body>) -> Result<Response<Body>, String> {
 
 	// Get subreddit
 	let sub = req.param("sub").unwrap_or_default();
-	let post_sort = req.cookie("post_sort").map_or_else(|| "hot".to_string(), |c| c.value().to_string());
-	let (sort, listing_query) = match rss_listing_params(&req, &post_sort) {
+	let (sort, listing_query) = match rss_listing_params(&req) {
 		Ok(params) => params,
 		Err(message) => return error(req, &message).await,
 	};
@@ -640,8 +639,8 @@ pub async fn rss(req: Request<Body>) -> Result<Response<Body>, String> {
 	Ok(res)
 }
 
-fn rss_listing_params(req: &Request<Body>, default_sort: &str) -> Result<(String, String), String> {
-	let mut sort = default_sort.to_owned();
+fn rss_listing_params(req: &Request<Body>) -> Result<(String, String), String> {
+	let mut sort = "hot".to_owned();
 	let mut time_filter = None;
 	let mut limit = None;
 
@@ -686,6 +685,7 @@ fn rss_listing_params(req: &Request<Body>, default_sort: &str) -> Result<(String
 
 	Ok((sort, query.finish()))
 }
+
 #[cfg(test)]
 mod tests {
 	use super::*;

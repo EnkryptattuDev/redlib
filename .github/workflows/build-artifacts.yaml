@@ -13,10 +13,6 @@ on:
 env: 
   CARGO_TERM_COLOR: always
 
-  CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: aarch64-linux-gnu-gcc
-  CC_aarch64_unknown_linux_musl: aarch64-linux-gnu-gcc
-  CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_LINKER: arm-linux-gnueabihf-gcc
-  CC_armv7_unknown_linux_musleabihf: arm-linux-gnueabihf-gcc
 
 jobs:
   build:
@@ -34,21 +30,45 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           target: ${{ matrix.target }}
+
+      - name: Install musl cross compiler
+        run: |
+          case "${{ matrix.target }}" in
+            x86_64-unknown-linux-musl)
+              toolchain=x86_64-linux-musl
+              target_env=x86_64_unknown_linux_musl
+              ;;
+            aarch64-unknown-linux-musl)
+              toolchain=aarch64-linux-musl
+              target_env=aarch64_unknown_linux_musl
+              ;;
+            armv7-unknown-linux-musleabihf)
+              toolchain=armv7l-linux-musleabihf
+              target_env=armv7_unknown_linux_musleabihf
+              ;;
+          esac
+          curl -fsSL "https://musl.cc/${toolchain}-cross.tgz" -o "$RUNNER_TEMP/${toolchain}-cross.tgz"
+          mkdir -p "$RUNNER_TEMP/${toolchain}-cross"
+          tar -xzf "$RUNNER_TEMP/${toolchain}-cross.tgz" --strip-components=1 -C "$RUNNER_TEMP/${toolchain}-cross"
+          echo "$RUNNER_TEMP/${toolchain}-cross/bin" >> "$GITHUB_PATH"
+          echo "CC_${target_env}=${toolchain}-gcc" >> "$GITHUB_ENV"
+          echo "CXX_${target_env}=${toolchain}-g++" >> "$GITHUB_ENV"
+          echo "CARGO_TARGET_${target_env^^}_LINKER=${toolchain}-g++" >> "$GITHUB_ENV"
       
       - if: matrix.target == 'x86_64-unknown-linux-musl'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends musl-tools git cmake perl pkg-config libclang-dev
+          sudo apt-get install -y --no-install-recommends g++ musl-tools git cmake perl pkg-config libclang-dev
  
       - if: matrix.target == 'armv7-unknown-linux-musleabihf'
         run: |
           sudo apt update
-          sudo apt install -y gcc-arm-linux-gnueabihf musl-tools git cmake perl pkg-config libclang-dev
+          sudo apt install -y musl-tools git cmake perl pkg-config libclang-dev
 
       - if: matrix.target == 'aarch64-unknown-linux-musl'
         run: |
           sudo apt update
-          sudo apt install -y gcc-aarch64-linux-gnu musl-tools git cmake perl pkg-config libclang-dev
+          sudo apt install -y musl-tools git cmake perl pkg-config libclang-dev
 
       - name: Versions
         id: version
